@@ -1,0 +1,68 @@
+#performing enrichment analysis on the genes that are differentially expressed. It's performed for both up and down regulated genes with edgeR and DEseq.
+#KEGG also can be used by just changing "GO:'KEGG".
+
+
+#down regulated deseq analysis
+
+library(gprofiler2)
+dr_deseq <- read.csv("downregulated_DESeq_result_padj&lfc.csv")
+
+GO_BP_dr_deseq <- gost(query = dr_deseq[,"X"], correction_method = 'fdr',
+                     organism = "hsapiens", ordered_query = FALSE, 
+                     multi_query = FALSE, significant = TRUE, exclude_iea = FALSE, 
+                     measure_underrepresentation = FALSE, evcodes = FALSE, 
+                     user_threshold = 0.05,
+                     domain_scope = "annotated", custom_bg = NULL, 
+                     numeric_ns = "", sources = 'GO:BP', as_short_link = FALSE)
+
+result_df <- as.data.frame(GO_BP_dr_deseq$result)
+
+write_csv(result_df, "GO_BP_dr_deseq.csv")
+
+# upregulated deseq analysis
+
+ur_deseq <- read.csv("upregulated_DESeq_result_padj&lfc.csv")
+
+GO_CC_ur_deseq <- gost(query = ur_deseq[,"X"], correction_method = 'fdr',
+                       organism = "hsapiens", ordered_query = FALSE, 
+                       multi_query = FALSE, significant = TRUE, exclude_iea = FALSE, 
+                       measure_underrepresentation = FALSE, evcodes = FALSE, 
+                       user_threshold = 0.05,
+                       domain_scope = "annotated", custom_bg = NULL, 
+                       numeric_ns = "", sources = 'GO:CC', as_short_link = FALSE)
+
+result_df <- as.data.frame(GO_CC_ur_deseq$result)
+
+write_csv(result_df, "GO_CC_ur_deseq.csv")
+
+# upregulated edgeR analysis
+
+ur_edgeR <- read.csv("upregulated_edgeR_degs.csv")
+
+GO_CC_ur_edgeR <- gost(query = ur_edgeR[,"X"], correction_method = 'fdr',
+                       organism = "hsapiens", ordered_query = FALSE, 
+                       multi_query = FALSE, significant = TRUE, exclude_iea = FALSE, 
+                       measure_underrepresentation = FALSE, evcodes = FALSE, 
+                       user_threshold = 0.05,
+                       domain_scope = "annotated", custom_bg = NULL, 
+                       numeric_ns = "", sources = 'GO:CC', as_short_link = FALSE)
+
+result_df <- as.data.frame(GO_CC_ur_edgeR$result)
+
+write_csv(result_df, "GO_CC_ur_edgeR.csv")
+
+# downregulated edgeR analysis
+
+dr_edgeR <- read.csv("downregulated_edgeR_degs.csv")
+
+GO_BP_dr_edgeR <- gost(query = dr_edgeR[,"X"], correction_method = 'fdr',
+                       organism = "hsapiens", ordered_query = FALSE, 
+                       multi_query = FALSE, significant = TRUE, exclude_iea = FALSE, 
+                       measure_underrepresentation = FALSE, evcodes = FALSE, 
+                       user_threshold = 0.05,
+                       domain_scope = "annotated", custom_bg = NULL, 
+                       numeric_ns = "", sources = 'GO:BP', as_short_link = FALSE)
+
+result_df <- as.data.frame(GO_BP_dr_edgeR$result)
+
+write_csv(result_df, "GO_BP_dr_edgeR.csv")
