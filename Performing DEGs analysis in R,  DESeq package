@@ -1,0 +1,90 @@
+#loading the required libraries
+
+library(tidyverse)
+library(DESeq2)
+library(readxl)
+
+# reading files
+
+GeneExpressionData <- read_excel("GeneExpressionData.xlsx")
+FreshMicro_individual_metadata <- read.csv("FreshMicro_individual_metadata.csv")
+
+#checking whether the row names of GeneExpressionData equal to the column names of FreshMicro_individual_metadata
+
+all(colnames(GeneExpressionData) %in% rownames(FreshMicro_individual_metadata))
+all(colnames(GeneExpressionData)== rownames(FreshMicro_individual_metadata))
+
+#Since it's not equal, we have to manipulate the data
+
+FreshMicro_individual_metadata_modified <- FreshMicro_individual_metadata |>
+  select(individualID, diagnosis) |>
+  filter(individualID %in% colnames(GeneExpressionData)) |>
+  mutate(diagnosis=gsub("Alzheimer","",diagnosis)) |>
+  mutate(diagnosis=gsub(" ","",diagnosis)) |>
+  remove_rownames() |>
+  column_to_rownames(var = "individualID")
+
+GeneExpressionData2 <-GeneExpressionData |>
+  remove_rownames() |>
+  column_to_rownames(var="GeneID")
+
+#checking again after data manipulation
+
+all(rownames(FreshMicro_individual_metadata_modified) %in% colnames(GeneExpressionData2))
+all(rownames(FreshMicro_individual_metadata_modified)== colnames(GeneExpressionData2))
+
+#construct a DESeqDataSet object
+
+dds <- DESeqDataSetFromMatrix(countData = GeneExpressionData2,
+                              colData = FreshMicro_individual_metadata_modified,
+                              design = ~diagnosis)
+
+dds
+
+
+#prefiltering removing rows with low gene counts
+#keeping rows that has at least 10 gene counts
+
+keep <- rowSums(assay(dds)) >= 10
+dds <- dds[keep, ]
+
+#set the factor level
+
+dds$design <- colData(dds)$diagnosis
+dds$design <- as.factor(dds$design)
+dds$design <- relevel(dds$design, ref = "control")
+
+# Step 3: Run DESeq
+dds <- DESeq(dds)
+res <- results(dds)
+
+res <- results(dds, contrast=c("diagnosis"," Disease","control"))
+
+# Explore Results ----------------
+
+summary(res)
+
+res1 <- data.frame(res)
+
+#filtering result column
+res_up <- res1 |>
+  select(padj,log2FoldChange) |>
+  filter(padj<0.05 & log2FoldChange>log2(1)) |>
+  arrange(padj)
+
+write.csv(res1.,"upregulated_DESeq_result_padj&lfc.csv")
+
+res_down <- res1 |>
+  select(padj,log2FoldChange) |>
+  filter(padj<0.05 & log2FoldChange<log2(1)) |>
+  arrange(padj)
+
+write.csv(res1.,"downregulated_DESeq_result_padj&lfc.csv")
+
+# contrasts
+resultsNames(dds)
+
+results(dds, contrast = c("diagnosis", " Disease", "control"))
+
+# MA plot
+plotMA(res)
