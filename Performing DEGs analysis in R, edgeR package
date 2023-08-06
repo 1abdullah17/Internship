@@ -1,0 +1,65 @@
+#loading the required libraries
+
+library(tidyverse)
+library(edgeR)
+library(readxl)
+
+# reading files
+GeneExpressionData <- read_excel("GeneExpressionData.xlsx")
+FreshMicro_individual_metadata <- read.csv("FreshMicro_individual_metadata.csv")
+
+#checking whether the row names of GeneExpressionData equal to the column names of FreshMicro_individual_metadata
+
+all(colnames(FreshMicro_individual_metadata) %in% rownames(GeneExpressionData))
+all(colnames(FreshMicro_individual_metadata)== rownames(GeneExpressionData))
+
+#Since it's not equal, we have to manipulate the data
+
+FreshMicro_individual_metadata_modified <- FreshMicro_individual_metadata |>
+  select(individualID, diagnosis) |>
+  filter(individualID %in% colnames(GeneExpressionData)) |>
+  mutate(diagnosis=gsub("Alzheimer","",diagnosis)) |>
+  remove_rownames() |>
+  column_to_rownames(var = "individualID")
+
+GeneExpressionData2 <-GeneExpressionData |>
+  remove_rownames() |>
+  column_to_rownames(var="GeneID")
+
+#constructing DGElist
+dge <- DGEList(counts = GeneExpressionData2, group = factor(FreshMicro_individual_metadata_modified$diagnosis))
+
+#filtering low counts genes
+keep <- filterByExpr(y = dge)
+
+dge <- dge[keep, , keep.lib.sizes=FALSE]
+
+#calculation of normalization factor(TMM)
+dge <- calcNormFactors(object = dge)
+
+#estimating dispersion
+dge <- estimateDisp(y = dge)
+
+#performing DEGs analysis
+et <- exactTest(object = dge)
+
+#selecting FDR
+res = topTags(object = et, n = "Inf")
+
+res_df <- data.frame(res)
+
+#for upregulated genes
+res_up <- res_df |>
+  select(FDR,logFC) |>
+  filter(FDR<0.05 & logFC>log2(1)) |>
+  arrange(FDR)
+
+write.csv(res_up, "upregulated_edgeR_degs.csv")
+
+#for downregulated genes
+res_down <- res_df |>
+  select(FDR,logFC) |>
+  filter(FDR<0.05 & logFC<log2(1)) |>
+  arrange(FDR)
+
+write.csv(res_up, "downregulated_edgeR_degs.csv")
